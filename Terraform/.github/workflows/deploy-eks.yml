@@ -1,10 +1,10 @@
-name: Deploy EKS Cluster with Terraform
+name: Deploy EKS Cluster with Terraform and Expose ArgoCD
 
 on:
   push:
     branches:
-      - develop  # Triggers on push to the main branch
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+      - develop
+  workflow_dispatch:
 
 jobs:
   terraform:
@@ -18,7 +18,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: Terraform/environment/dev  # Set this if your Terraform code is in a subfolder
+        working-directory: Terraform/environment/dev
 
     steps:
       - name: Checkout repository
@@ -27,7 +27,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.6.6  # Use the Terraform version compatible with your code
+          terraform_version: 1.6.6
 
       - name: Terraform Init
         run: terraform init
@@ -44,3 +44,64 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
 
+      - name: Output kubeconfig
+        id: kubeconfig-output
+        run: |
+          # Assumes your Terraform outputs kubeconfig as base64-encoded string, adjust if different
+          terraform output -raw kubeconfig > kubeconfig.yaml
+          cat kubeconfig.yaml
+
+      - name: Upload kubeconfig artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: kubeconfig
+          path: kubeconfig.yaml
+
+  expose-argocd:
+    name: 'Expose ArgoCD Service'
+    runs-on: ubuntu-latest
+    needs: terraform
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download kubeconfig artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: kubeconfig
+          path: .
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubeconfig
+        run: |
+          export KUBECONFIG=$PWD/kubeconfig.yaml
+          kubectl config view
+
+      - name: Patch argocd-server service to LoadBalancer
+        run: |
+          kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
+
+      - name: Wait for LoadBalancer hostname
+        id: wait-for-lb
+        run: |
+          for i in {1..30}; do
+            ELB_HOST=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            if [ -n "$ELB_HOST" ]; then
+              echo "ELB hostname found: $ELB_HOST"
+              echo "::set-output name=elb_host::$ELB_HOST"
+              exit 0
+            fi
+            echo "Waiting for ELB hostname... attempt $i"
+            sleep 10
+          done
+          echo "Timeout waiting for ELB hostname"
+          exit 1
+
+      - name: Show ArgoCD URL
+        run: |
+          echo "ArgoCD URL: http://$(echo ${{ steps.wait-for-lb.outputs.elb_host }})"
