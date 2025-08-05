@@ -101,7 +101,10 @@ jobs:
       - name: Install Argo CD
         run: |
           helm upgrade --install argocd argo/argo-cd \
-            --namespace argocd --create-namespace
+          --namespace argocd --create-namespace \
+          --set server.service.type=LoadBalancer \
+          --set server.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-internal"="true"
+
 
   expose-argocd:
     name: 'Expose Argo CD Service'
