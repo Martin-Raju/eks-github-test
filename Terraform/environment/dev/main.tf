@@ -31,7 +31,7 @@ module "vpc" {
   enable_dns_support   = true
 
   tags = {
-    "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
     "Environment"                               = var.environment
 
   }
@@ -42,7 +42,7 @@ module "vpc" {
   }
 
   private_subnet_tags = {
-    "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
     "kubernetes.io/role/internal-elb"           = "1"
   }
 }
