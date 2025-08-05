@@ -87,15 +87,13 @@ jobs:
           helm repo add argo https://argoproj.github.io/argo-helm
           helm repo update
 
-      - name: Install Argo CD via Helm
+      - name: Install Argo CD
         run: |
           helm upgrade --install argocd argo/argo-cd \
-            --namespace argocd \
-            --version 5.51.6 \
-            --set server.service.type=LoadBalancer
+           --namespace argocd --create-namespace \
+           --set server.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-internal"="true"
 
-      - name: Get Argo CD ELB URL
+      - name: Get Argo CD URL
         run: |
-          echo "Waiting for ELB provisioning..."
-          sleep 30
-          kubectl -n argocd get svc argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+         ELB_HOST=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+         echo "Argo CD URL: http://$ELB_HOST"
