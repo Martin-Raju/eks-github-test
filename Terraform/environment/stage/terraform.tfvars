@@ -1,9 +1,0 @@
-kubernetes_version        = "1.27"
-vpc_cidr                  = "10.0.0.0/16"
-aws_region                = "us-east-2"
-cluster_name              = "Preprod-Cluster"
-environment               = "Stage"
-bucket_name               = "poc-tfstate-bucket-0123456"
-worker_mgmt_ingress_cidrs = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
-private_subnets           = ["10.0.1.0/24", "10.0.2.0/24"]
-public_subnets            = ["10.0.4.0/24", "10.0.5.0/24"]
