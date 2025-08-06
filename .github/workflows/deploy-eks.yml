@@ -53,8 +53,9 @@ jobs:
 
       - name: Get kubeconfig
         run: |
-             aws eks update-kubeconfig --region us-west-2 --name my-cluster
-             cat ~/.kube/config > kubeconfig.yaml
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name my-cluster
+          mkdir -p Terraform/environment/dev
+          cp ~/.kube/config Terraform/environment/dev/kubeconfig.yaml
 
       - name: Set KUBECONFIG env var
         run: echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
