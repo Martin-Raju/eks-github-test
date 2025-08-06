@@ -116,22 +116,12 @@ resource "helm_release" "argo_cd" {
   namespace        = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
-  version          = "5.51.6"
+  version          = "8.2.5"
   create_namespace = true
-
-  values = [
-    yamlencode({
-      server = {
-        service = {
-          type = "LoadBalancer"
-          ports = {
-            https = 443
-          }
-        }
-        ingress = {
-          enabled = false
-        }
-      }
-    })
-  ]
+  timeout    = 600
+  set {
+    name  = "server.service.type"
+    value = "LoadBalancer"
+  }
+  wait = true
 }
