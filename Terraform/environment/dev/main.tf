@@ -131,7 +131,7 @@ resource "helm_release" "argo_cd" {
   version          = "8.2.5"
   create_namespace = true
   timeout          = 600
-  set {
+  set = {
     name  = "server.service.type"
     value = "LoadBalancer"
   }
