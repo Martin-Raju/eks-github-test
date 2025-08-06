@@ -40,7 +40,4 @@ output "iam_username" {
   value = local.iam_username
 }
 
-output "argo_cd_url" {
-  value = helm_release.argo_cd.status.load_balancer[0].ingress[0].hostname
-}
 
