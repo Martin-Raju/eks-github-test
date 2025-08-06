@@ -108,28 +108,28 @@ module "eks" {
       autoscaler   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
     }
   }
-resource "helm_release" "argo_cd" {
-  name       = "argo-cd"
-  namespace  = "argocd"
-  repository = "https://argoproj.github.io/argo-helm"
-  chart      = "argo-cd"
-  version    = "5.51.6"  # ✅ Check for the latest at: https://artifacthub.io/packages/helm/argo/argo-cd
-  create_namespace = true
+  resource "helm_release" "argo_cd" {
+    name             = "argo-cd"
+    namespace        = "argocd"
+    repository       = "https://argoproj.github.io/argo-helm"
+    chart            = "argo-cd"
+    version          = "5.51.6" # ✅ Check for the latest at: https://artifacthub.io/packages/helm/argo/argo-cd
+    create_namespace = true
 
-  values = [
-    yamlencode({
-      server = {
-        service = {
-          type = "LoadBalancer"
-          ports = {
-            https = 443
+    values = [
+      yamlencode({
+        server = {
+          service = {
+            type = "LoadBalancer"
+            ports = {
+              https = 443
+            }
+          }
+          ingress = {
+            enabled = false
           }
         }
-        ingress = {
-          enabled = false
-        }
-      }
-    })
-  ]
-}
+      })
+    ]
+  }
 }
