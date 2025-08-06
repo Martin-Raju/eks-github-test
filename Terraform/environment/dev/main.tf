@@ -1,41 +1,24 @@
+# Set up AWS Provider
 provider "aws" {
   region = var.aws_region
 }
 
-provider "kubernetes" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  token                  = data.aws_eks_cluster_auth.cluster.token
-}
-
-provider "helm" {
-  kubernetes = {
-    host                   = module.eks.cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-    token                  = data.aws_eks_cluster_auth.cluster.token
-  }
-}
-
-data "aws_eks_cluster_auth" "cluster" {
-  name = module.eks.cluster_name
-}
-
+# Data sources
 data "aws_availability_zones" "available" {}
-
 data "aws_caller_identity" "current" {}
 
 locals {
   iam_username = split("/", data.aws_caller_identity.current.arn)[1]
 }
 
+# Label Module (Reusable naming)
 module "label" {
-  source = "../../modules/terraform-null-label"
-
+  source      = "../../modules/terraform-null-label"
   name        = var.cluster_name
   environment = var.environment
 }
 
-# --- VPC Module ---
+# VPC Module
 module "vpc" {
   source               = "../../modules/vpc"
   name                 = "${module.label.environment}-vpc"
@@ -48,12 +31,6 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = {
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-    "Environment"                               = var.environment
-
-  }
-
   public_subnet_tags = {
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
     "kubernetes.io/role/elb"                    = "1"
@@ -63,9 +40,13 @@ module "vpc" {
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
     "kubernetes.io/role/internal-elb"           = "1"
   }
+
+  tags = {
+    "Environment" = var.environment
+  }
 }
 
-# --- EKS Module ---
+# EKS Module
 module "eks" {
   source                          = "../../modules/eks"
   cluster_name                    = module.label.id
@@ -83,7 +64,6 @@ module "eks" {
   access_entries = {
     user_access = {
       principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/${local.iam_username}"
-
       policy_associations = {
         admin = {
           policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy"
@@ -91,7 +71,6 @@ module "eks" {
             type = "cluster"
           }
         }
-
         cluster_admin = {
           policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
@@ -123,7 +102,33 @@ module "eks" {
   }
 }
 
-# --- Deploy Argo CD using Helm ---
+# Delay auth provider until EKS exists
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_name
+  depends_on = [module.eks]
+}
+
+# Kubernetes Provider (after EKS)
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+
+  depends_on = [module.eks]
+}
+
+# Helm Provider (after EKS)
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    token                  = data.aws_eks_cluster_auth.cluster.token
+  }
+
+  depends_on = [module.eks]
+}
+
+# Deploy ArgoCD via Helm
 resource "helm_release" "argo_cd" {
   name             = "argo-cd"
   namespace        = "argocd"
@@ -132,12 +137,14 @@ resource "helm_release" "argo_cd" {
   version          = "8.2.5"
   create_namespace = true
   timeout          = 600
+  wait             = true
+
   set = [
     {
       name  = "server.service.type"
       value = "LoadBalancer"
     }
   ]
-  wait       = true
+
   depends_on = [module.eks]
 }
