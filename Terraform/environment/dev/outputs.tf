@@ -41,6 +41,6 @@ output "iam_username" {
 }
 
 output "argo_cd_url" {
-  description = "Argo CD LoadBalancer DNS Name"
-  value       = helm_release.argo_cd.status[0].load_balancer.ingress[0].hostname
+  value = helm_release.argo_cd.status.load_balancer[0].ingress[0].hostname
 }
+
