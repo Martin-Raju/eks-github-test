@@ -138,6 +138,6 @@ resource "helm_release" "argo_cd" {
       value = "LoadBalancer"
     }
   ]
-  wait = true
+  wait       = true
   depends_on = [module.eks]
 }
