@@ -63,7 +63,7 @@ module "eks" {
   enable_irsa                     = true
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
-  
+
   resource "helm_release" "argo_cd" {
     name             = "argo-cd"
     namespace        = "argocd"
@@ -88,8 +88,8 @@ module "eks" {
       })
     ]
   }
-  
- tags = {
+
+  tags = {
     cluster = var.cluster_name
   }
 
