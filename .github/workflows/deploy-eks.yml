@@ -29,7 +29,7 @@ jobs:
       - name: Get kubeconfig
         working-directory: Terraform/environment/dev
         run: |
-          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name my-cluster
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name $EKS_CLUSTER_NAME
           cp ~/.kube/config ./kubeconfig.yaml
 
       - name: Debug kubeconfig (optional)
