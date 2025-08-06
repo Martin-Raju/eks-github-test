@@ -15,7 +15,6 @@ provider "helm" {
     token                  = data.aws_eks_cluster_auth.cluster.token
   }
 }
-}
 
 data "aws_eks_cluster_auth" "cluster" {
   name = module.eks.cluster_name
@@ -54,34 +53,46 @@ module "vpc" {
     "Environment"                               = var.environment
   }
 
-resource "aws_subnet" "public_subnets" {
-  count = length(var.public_subnets)
+  public_subnet_tags = {
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                    = "1"
+  }
 
-  subnet_id = var.public_subnets[count.index]
+  private_subnet_tags = {
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"           = "1"
+  }
+}
+
+# Tag existing public subnets
+resource "aws_ec2_tag" "public_subnet_tags" {
+  for_each = toset(var.public_subnets)
+
+  resource_id = each.value
 
   tags = merge(
     {
       "kubernetes.io/cluster/${var.cluster_name}" = "shared"
       "kubernetes.io/role/elb"                    = "1"
     },
-    var.additional_tags
+    var.additional_tags != null ? var.additional_tags : {}
   )
 }
 
-resource "aws_subnet" "private_subnets" {
-  count = length(var.private_subnets)
+# Tag existing private subnets
+resource "aws_ec2_tag" "private_subnet_tags" {
+  for_each = toset(var.private_subnets)
 
-  subnet_id = var.private_subnets[count.index]
+  resource_id = each.value
 
   tags = merge(
     {
       "kubernetes.io/cluster/${var.cluster_name}" = "shared"
       "kubernetes.io/role/internal-elb"           = "1"
     },
-    var.additional_tags
+    var.additional_tags != null ? var.additional_tags : {}
   )
 }
-
 
 # --- EKS Module ---
 module "eks" {
