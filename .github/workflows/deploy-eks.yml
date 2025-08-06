@@ -78,21 +78,34 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Add Helm repos
+        run: |
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo add eks https://aws.github.io/eks-charts
+          helm repo update
+
+      - name: Install AWS Load Balancer Controller
+        run: |
+          VPC_ID=$(aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_REGION \
+                    --query "cluster.resourcesVpcConfig.vpcId" --output text)
+          
+          helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+            -n kube-system \
+            --set clusterName=$EKS_CLUSTER_NAME \
+            --set serviceAccount.create=false \
+            --set serviceAccount.name=aws-load-balancer-controller \
+            --set region=$AWS_REGION \
+            --set vpcId=$VPC_ID
+
       - name: Create Argo CD namespace
         run: |
           kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Add Argo Helm repo
-        run: |
-          helm repo add argo https://argoproj.github.io/argo-helm
-          helm repo update
-
       - name: Install Argo CD (public LoadBalancer)
         run: |
           helm upgrade --install argocd argo/argo-cd \
-          --namespace argocd --create-namespace \
-          --set server.service.type=LoadBalancer
-
+            --namespace argocd --create-namespace \
+            --set server.service.type=LoadBalancer
 
       - name: Wait for Argo CD ELB DNS
         run: |
@@ -100,11 +113,11 @@ jobs:
           for i in {1..20}; do
             HOSTNAME=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
             if [[ -n "$HOSTNAME" ]]; then
-              echo "Argo CD URL: http://$HOSTNAME"
+              echo "✅ Argo CD URL: http://$HOSTNAME"
               exit 0
             fi
             echo "Still waiting... ($i)"
             sleep 15
           done
-          echo "LoadBalancer hostname not assigned in time." >&2
+          echo "❌ LoadBalancer hostname not assigned in time." >&2
           exit 1
