@@ -42,7 +42,7 @@ jobs:
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform destriy -auto-approve tfplan
 
   install-argocd:
     name: 'Install Argo CD on EKS'
