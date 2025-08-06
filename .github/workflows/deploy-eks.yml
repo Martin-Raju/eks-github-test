@@ -44,3 +44,17 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              aws-region: us-west-2
+
+      - name: Get kubeconfig
+        run: |
+             aws eks update-kubeconfig --region us-west-2 --name my-cluster
+             cat ~/.kube/config > kubeconfig.yaml
+
+      - name: Set KUBECONFIG env var
+        run: echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
