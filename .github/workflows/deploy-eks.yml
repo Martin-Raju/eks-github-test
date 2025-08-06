@@ -26,21 +26,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Get kubeconfig
-        working-directory: Terraform/environment/dev
-        run: |
-          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
-          cp ~/.kube/config ./kubeconfig.yaml
-
-      - name: Debug kubeconfig (optional)
-        working-directory: Terraform/environment/dev
-        run: |
-          echo "Checking kubeconfig.yaml:"
-          ls -l kubeconfig.yaml
-
-      - name: Set KUBECONFIG env var
-        run: echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -59,4 +44,4 @@ jobs:
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        run: terraform destroy -auto-approve
+        run: terraform apply -auto-approve tfplan

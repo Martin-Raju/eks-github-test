@@ -41,7 +41,7 @@ module "vpc" {
   name                 = "${module.label.environment}-vpc"
   cidr                 = var.vpc_cidr
   azs                  = data.aws_availability_zones.available.names
-  private_subnets      = var.private_subnets
+  private_subnets      = concat(module.vpc.public_subnets, module.vpc.private_subnets)
   public_subnets       = var.public_subnets
   enable_nat_gateway   = true
   single_nat_gateway   = true
