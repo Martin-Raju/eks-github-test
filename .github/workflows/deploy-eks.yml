@@ -98,6 +98,6 @@ jobs:
          ELB_HOST=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
          echo "Argo CD URL: http://$ELB_HOST"
 
-     - name: Apply Argo CD Ingress YAML
+      - name: Apply Argo CD Ingress YAML
         run: |
           kubectl apply -f ArgoCD/argocd-ingress.yaml
