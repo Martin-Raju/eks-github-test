@@ -52,6 +52,7 @@ jobs:
               aws-region: us-west-2
 
       - name: Get kubeconfig
+        working-directory: Terraform/environment/dev
         run: |
           aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name my-cluster
           mkdir -p Terraform/environment/dev
