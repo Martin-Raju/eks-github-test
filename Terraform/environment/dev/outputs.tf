@@ -40,4 +40,9 @@ output "iam_username" {
   value = local.iam_username
 }
 
+output "argocd_server_lb" {
+  value = helm_release.argo_cd.status["load_balancer_ingress"][0]["hostname"]
+  description = "Argo CD server LoadBalancer hostname"
+}
+
 
