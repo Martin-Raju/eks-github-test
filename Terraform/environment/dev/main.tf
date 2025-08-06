@@ -70,7 +70,7 @@ module "eks" {
   source                          = "../../modules/eks"
   cluster_name                    = module.label.id
   cluster_version                 = var.kubernetes_version
-  subnet_ids                      = concat(module.vpc.public_subnets, module.vpc.private_subnets)
+  subnet_ids                      = module.vpc.private_subnets
   vpc_id                          = module.vpc.vpc_id
   enable_irsa                     = true
   cluster_endpoint_public_access  = true
@@ -139,4 +139,5 @@ resource "helm_release" "argo_cd" {
     }
   ]
   wait = true
+  depends_on = [module.eks]
 }
