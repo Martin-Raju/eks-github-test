@@ -53,16 +53,34 @@ module "vpc" {
     "Environment"                               = var.environment
   }
 
-  public_subnet_tags = {
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-    "kubernetes.io/role/elb"                    = "1"
-  }
+resource "aws_subnet" "public_subnets" {
+  count = length(var.public_subnets)
 
-  private_subnet_tags = {
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-    "kubernetes.io/role/internal-elb"           = "1"
-  }
+  subnet_id = var.public_subnets[count.index]
+
+  tags = merge(
+    {
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      "kubernetes.io/role/elb"                    = "1"
+    },
+    var.additional_tags
+  )
 }
+
+resource "aws_subnet" "private_subnets" {
+  count = length(var.private_subnets)
+
+  subnet_id = var.private_subnets[count.index]
+
+  tags = merge(
+    {
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      "kubernetes.io/role/internal-elb"           = "1"
+    },
+    var.additional_tags
+  )
+}
+
 
 # --- EKS Module ---
 module "eks" {
