@@ -87,10 +87,12 @@ jobs:
           helm repo add argo https://argoproj.github.io/argo-helm
           helm repo update
 
-      - name: Install Argo CD 
+      - name: Install Argo CD (public LoadBalancer)
         run: |
           helm upgrade --install argocd argo/argo-cd \
-            --namespace argocd --create-namespace
+          --namespace argocd --create-namespace \
+          --set server.service.type=LoadBalancer
+
 
       - name: Wait for Argo CD ELB DNS
         run: |
