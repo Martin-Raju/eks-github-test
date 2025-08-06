@@ -3,8 +3,8 @@ name: Deploy EKS Cluster with Terraform
 on:
   push:
     branches:
-      - develop  # Triggers on push to the main branch
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+      - develop
+  workflow_dispatch:
 
 jobs:
   terraform:
@@ -18,7 +18,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: Terraform/environment/dev  # Set this if your Terraform code is in a subfolder
+        working-directory: Terraform/environment/dev
 
     steps:
       - name: Checkout repository
@@ -27,7 +27,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.6.6  # Use the Terraform version compatible with your code
+          terraform_version: 1.6.6
 
       - name: Terraform Init
         run: terraform init
@@ -47,7 +47,7 @@ jobs:
   install-argocd:
     name: 'Install Argo CD on EKS'
     runs-on: ubuntu-latest
-    needs: terraform  # Wait for EKS cluster to be deployed
+    needs: terraform
 
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -87,17 +87,22 @@ jobs:
           helm repo add argo https://argoproj.github.io/argo-helm
           helm repo update
 
-      - name: Install Argo CD
+      - name: Install Argo CD 
         run: |
           helm upgrade --install argocd argo/argo-cd \
-           --namespace argocd --create-namespace \
-           --set server.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-internal"="true"
+            --namespace argocd --create-namespace
 
-      - name: Get Argo CD URL
+      - name: Wait for Argo CD ELB DNS
         run: |
-         ELB_HOST=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-         echo "Argo CD URL: http://$ELB_HOST"
-
-      - name: Apply Argo CD Ingress YAML
-        run: |
-          kubectl apply -f ArgoCD/argocd-ingress.yaml
+          echo "Waiting for Argo CD LoadBalancer hostname..."
+          for i in {1..20}; do
+            HOSTNAME=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            if [[ -n "$HOSTNAME" ]]; then
+              echo "Argo CD URL: http://$HOSTNAME"
+              exit 0
+            fi
+            echo "Still waiting... ($i)"
+            sleep 15
+          done
+          echo "LoadBalancer hostname not assigned in time." >&2
+          exit 1
