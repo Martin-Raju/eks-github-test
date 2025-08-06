@@ -2,12 +2,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-provider "helm" {
-  kubernetes {
-    config_path = "~/.kube/config"
-  }
-}
-
 data "aws_availability_zones" "available" {}
 data "aws_caller_identity" "current" {}
 locals {
@@ -63,33 +57,7 @@ module "eks" {
   enable_irsa                     = true
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
-
-  resource "helm_release" "argo_cd" {
-    name             = "argo-cd"
-    namespace        = "argocd"
-    repository       = "https://argoproj.github.io/argo-helm"
-    chart            = "argo-cd"
-    version          = "5.51.6" # ✅ Check for the latest at: https://artifacthub.io/packages/helm/argo/argo-cd
-    create_namespace = true
-
-    values = [
-      yamlencode({
-        server = {
-          service = {
-            type = "LoadBalancer"
-            ports = {
-              https = 443
-            }
-          }
-          ingress = {
-            enabled = false
-          }
-        }
-      })
-    ]
-  }
-
-  tags = {
+   tags = {
     cluster = var.cluster_name
   }
 
