@@ -133,9 +133,9 @@ resource "helm_release" "argo_cd" {
   timeout          = 600
   set = [
     {
-    name  = "server.service.type"
-    value = "LoadBalancer"
-     }
-    ]
+      name  = "server.service.type"
+      value = "LoadBalancer"
+    }
+  ]
   wait = true
 }
