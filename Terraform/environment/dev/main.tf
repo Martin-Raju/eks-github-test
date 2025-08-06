@@ -2,8 +2,16 @@ provider "aws" {
   region = var.aws_region
 }
 
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
 data "aws_availability_zones" "available" {}
+
 data "aws_caller_identity" "current" {}
+
 locals {
   iam_username = split("/", data.aws_caller_identity.current.arn)[1]
 }
@@ -13,9 +21,7 @@ module "label" {
 
   name        = var.cluster_name
   environment = var.environment
-
 }
-
 
 # --- VPC Module ---
 module "vpc" {
@@ -33,7 +39,6 @@ module "vpc" {
   tags = {
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
     "Environment"                               = var.environment
-
   }
 
   public_subnet_tags = {
@@ -53,11 +58,12 @@ module "eks" {
   cluster_name                    = module.label.id
   cluster_version                 = var.kubernetes_version
   subnet_ids                      = module.vpc.private_subnets
-  vpc_id                          = module.vpc.vpc_id
-  enable_irsa                     = true
+  vpc_id                         = module.vpc.vpc_id
+  enable_irsa                    = true
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
-   tags = {
+
+  tags = {
     cluster = var.cluster_name
   }
 
@@ -93,6 +99,7 @@ module "eks" {
       ami_type       = "AL2_x86_64"
     }
   }
+
   eks_managed_node_group_defaults = {
     iam_role_additional_policies = {
       eks_worker   = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
@@ -101,4 +108,30 @@ module "eks" {
       autoscaler   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
     }
   }
+}
+
+# --- Deploy Argo CD using Helm ---
+resource "helm_release" "argo_cd" {
+  name             = "argo-cd"
+  namespace        = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  version          = "5.51.6"
+  create_namespace = true
+
+  values = [
+    yamlencode({
+      server = {
+        service = {
+          type = "LoadBalancer"
+          ports = {
+            https = 443
+          }
+        }
+        ingress = {
+          enabled = false
+        }
+      }
+    })
+  ]
 }
