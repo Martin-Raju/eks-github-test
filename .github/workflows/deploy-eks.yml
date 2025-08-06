@@ -11,11 +11,6 @@ jobs:
     name: 'Terraform Deploy'
     runs-on: ubuntu-latest
 
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-
     defaults:
       run:
         working-directory: Terraform/environment/dev
@@ -23,6 +18,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Get kubeconfig
+        working-directory: Terraform/environment/dev
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name my-cluster
+          cp ~/.kube/config ./kubeconfig.yaml
+
+      - name: Debug kubeconfig (optional)
+        working-directory: Terraform/environment/dev
+        run: |
+          echo "Checking kubeconfig.yaml:"
+          ls -l kubeconfig.yaml
+
+      - name: Set KUBECONFIG env var
+        run: echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -43,20 +60,3 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-              aws-region: us-west-2
-
-      - name: Get kubeconfig
-        working-directory: Terraform/environment/dev
-        run: |
-          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name my-cluster
-          mkdir -p Terraform/environment/dev
-          cp ~/.kube/config Terraform/environment/dev/kubeconfig.yaml
-
-      - name: Set KUBECONFIG env var
-        run: echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
