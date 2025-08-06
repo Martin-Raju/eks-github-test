@@ -84,8 +84,8 @@ module "eks" {
   eks_managed_node_groups = {
     default = {
       name           = "${module.label.environment}-node-group"
-      min_size       = 2
-      max_size       = 4
+      min_size       = 1
+      max_size       = 3
       desired_size   = 1
       instance_types = ["t3.medium"]
       ami_type       = "AL2_x86_64"
