@@ -8,11 +8,11 @@ provider "aws" {
 }
 
 provider "helm" {
-  kubernetes = {
+  kubernetes {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
 
-    exec = {
+    exec {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
       # This requires the awscli to be installed locally where Terraform is executed
@@ -54,23 +54,19 @@ locals {
 module "eks" {
   source = "../.."
 
-  name               = local.name
-  kubernetes_version = "1.33"
+  cluster_name    = local.name
+  cluster_version = "1.31"
 
   # Gives Terraform identity admin access to cluster which will
   # allow deploying resources (Karpenter) into the cluster
   enable_cluster_creator_admin_permissions = true
-  endpoint_public_access                   = true
+  cluster_endpoint_public_access           = true
 
-  addons = {
-    coredns = {}
-    eks-pod-identity-agent = {
-      before_compute = true
-    }
-    kube-proxy = {}
-    vpc-cni = {
-      before_compute = true
-    }
+  cluster_addons = {
+    coredns                = {}
+    eks-pod-identity-agent = {}
+    kube-proxy             = {}
+    vpc-cni                = {}
   }
 
   vpc_id                   = module.vpc.vpc_id
@@ -110,7 +106,8 @@ module "eks" {
 module "karpenter" {
   source = "../../modules/karpenter"
 
-  cluster_name = module.eks.cluster_name
+  cluster_name          = module.eks.cluster_name
+  enable_v1_permissions = true
 
   # Name needs to match role name passed to the EC2NodeClass
   node_iam_role_use_name_prefix   = false
@@ -143,7 +140,7 @@ resource "helm_release" "karpenter" {
   repository_username = data.aws_ecrpublic_authorization_token.token.user_name
   repository_password = data.aws_ecrpublic_authorization_token.token.password
   chart               = "karpenter"
-  version             = "1.6.0"
+  version             = "1.1.1"
   wait                = false
 
   values = [
@@ -167,7 +164,7 @@ resource "helm_release" "karpenter" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 6.0"
+  version = "~> 5.0"
 
   name = local.name
   cidr = local.vpc_cidr

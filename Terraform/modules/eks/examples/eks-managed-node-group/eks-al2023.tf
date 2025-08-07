@@ -1,20 +1,16 @@
 module "eks_al2023" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 21.0"
+  version = "~> 20.0"
 
-  name               = "${local.name}-al2023"
-  kubernetes_version = "1.33"
+  cluster_name    = "${local.name}-al2023"
+  cluster_version = "1.31"
 
   # EKS Addons
-  addons = {
-    coredns = {}
-    eks-pod-identity-agent = {
-      before_compute = true
-    }
-    kube-proxy = {}
-    vpc-cni = {
-      before_compute = true
-    }
+  cluster_addons = {
+    coredns                = {}
+    eks-pod-identity-agent = {}
+    kube-proxy             = {}
+    vpc-cni                = {}
   }
 
   vpc_id     = module.vpc.vpc_id
@@ -45,6 +41,8 @@ module "eks_al2023" {
               kubelet:
                 config:
                   shutdownGracePeriod: 30s
+                  featureGates:
+                    DisableKubeletCloudCredentialProviders: true
           EOT
         }
       ]

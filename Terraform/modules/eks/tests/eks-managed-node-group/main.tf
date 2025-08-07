@@ -13,9 +13,9 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  name               = "ex-${replace(basename(path.cwd), "_", "-")}"
-  kubernetes_version = "1.33"
-  region             = "eu-west-1"
+  name            = "ex-${replace(basename(path.cwd), "_", "-")}"
+  cluster_version = "1.31"
+  region          = "eu-west-1"
 
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
@@ -34,17 +34,21 @@ locals {
 module "eks" {
   source = "../.."
 
-  name                   = local.name
-  kubernetes_version     = local.kubernetes_version
-  endpoint_public_access = true
+  cluster_name                   = local.name
+  cluster_version                = local.cluster_version
+  cluster_endpoint_public_access = true
 
   # IPV6
-  ip_family                  = "ipv6"
+  cluster_ip_family          = "ipv6"
   create_cni_ipv6_iam_policy = true
 
   enable_cluster_creator_admin_permissions = true
 
-  addons = {
+  # Enable EFA support by adding necessary security group rules
+  # to the shared node security group
+  enable_efa_support = true
+
+  cluster_addons = {
     coredns = {
       most_recent = true
     }
@@ -75,17 +79,22 @@ module "eks" {
     }
   }
 
-  upgrade_policy = {
+  cluster_upgrade_policy = {
     support_type = "STANDARD"
   }
 
-  zonal_shift_config = {
+  cluster_zonal_shift_config = {
     enabled = true
   }
 
   vpc_id                   = module.vpc.vpc_id
   subnet_ids               = module.vpc.private_subnets
   control_plane_subnet_ids = module.vpc.intra_subnets
+
+  eks_managed_node_group_defaults = {
+    ami_type       = "AL2023_x86_64_STANDARD"
+    instance_types = ["m6i.large", "m5.large", "m5n.large", "m5zn.large"]
+  }
 
   eks_managed_node_groups = {
     # Default node group - as provided by AWS EKS
@@ -105,8 +114,8 @@ module "eks" {
 
     placement_group = {
       create_placement_group = true
-      subnet_ids             = slice(module.vpc.private_subnets, 0, 1)
-      instance_types         = ["m5.large", "m5n.large", "m5zn.large"]
+      # forces the subnet lookup to be restricted to this availability zone
+      placement_group_az = element(local.azs, 3)
     }
 
     # AL2023 node group utilizing new user data format which utilizes nodeadm
@@ -126,6 +135,8 @@ module "eks" {
               kubelet:
                 config:
                   shutdownGracePeriod: 30s
+                  featureGates:
+                    DisableKubeletCloudCredentialProviders: true
           EOT
         }
       ]
@@ -227,6 +238,8 @@ module "eks" {
             kubelet:
               config:
                 shutdownGracePeriod: 30s
+                featureGates:
+                  DisableKubeletCloudCredentialProviders: true
         EOT
         content_type = "application/node.eks.aws"
       }]
@@ -346,7 +359,7 @@ module "eks" {
 
       # This will:
       # 1. Create a placement group to place the instances close to one another
-      # 2. Create and attach the necessary security group rules (and security group)
+      # 2. Ignore subnets that reside in AZs that do not support the instance type
       # 3. Expose all of the available EFA interfaces on the launch template
       enable_efa_support = true
       enable_efa_only    = true
@@ -408,12 +421,6 @@ module "eks" {
         }
       }
     }
-
-    no-policy = {
-      kubernetes_groups = ["something"]
-      principal_arn     = data.aws_caller_identity.current.arn
-      user_name         = "someone"
-    }
   }
 
   tags = local.tags
@@ -469,7 +476,7 @@ module "disabled_eks_managed_node_group" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 6.0"
+  version = "~> 5.0"
 
   name = local.name
   cidr = local.vpc_cidr
@@ -516,7 +523,7 @@ module "aws_vpc_cni_ipv6_pod_identity" {
 
 module "ebs_kms_key" {
   source  = "terraform-aws-modules/kms/aws"
-  version = "~> 4.0"
+  version = "~> 2.1"
 
   description = "Customer managed key to encrypt EKS managed node group volumes"
 
@@ -598,7 +605,7 @@ data "aws_ami" "eks_default" {
 
   filter {
     name   = "name"
-    values = ["amazon-eks-node-al2023-x86_64-standard-${local.kubernetes_version}-v*"]
+    values = ["amazon-eks-node-al2023-x86_64-standard-${local.cluster_version}-v*"]
   }
 }
 
@@ -608,7 +615,7 @@ data "aws_ami" "eks_default_arm" {
 
   filter {
     name   = "name"
-    values = ["amazon-eks-node-al2023-arm64-standard-${local.kubernetes_version}-v*"]
+    values = ["amazon-eks-node-al2023-arm64-standard-${local.cluster_version}-v*"]
   }
 }
 
@@ -618,7 +625,7 @@ data "aws_ami" "eks_default_bottlerocket" {
 
   filter {
     name   = "name"
-    values = ["bottlerocket-aws-k8s-${local.kubernetes_version}-x86_64-*"]
+    values = ["bottlerocket-aws-k8s-${local.cluster_version}-x86_64-*"]
   }
 }
 
