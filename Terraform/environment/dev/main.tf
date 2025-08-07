@@ -217,7 +217,7 @@ resource "helm_release" "karpenter" {
       value = aws_iam_instance_profile.karpenter.name
     },
     {
-      name  = "serviceAccount.annotations"
+      name = "serviceAccount.annotations"
       value = jsonencode({
         "eks.amazonaws.com/role-arn" = aws_iam_role.karpenter_controller.arn
       })
