@@ -205,18 +205,9 @@ resource "helm_release" "karpenter" {
   version          = "0.36.1"
 
   set = [
-    {
-      name  = "settings.clusterName"
-      value = module.eks.cluster_name
-    },
-    {
-      name  = "settings.clusterEndpoint"
-      value = module.eks.cluster_endpoint
-    },
-    {
-      name  = "settings.aws.defaultInstanceProfile"
-      value = aws_iam_instance_profile.karpenter.name
-    }
+    { name = "settings.clusterName", value = module.eks.cluster_name },
+    { name = "settings.clusterEndpoint", value = module.eks.cluster_endpoint },
+    { name = "settings.aws.defaultInstanceProfile", value = aws_iam_instance_profile.karpenter.name },
   ]
   set_sensitive = [
     {
@@ -224,8 +215,10 @@ resource "helm_release" "karpenter" {
       value = aws_iam_role.karpenter_controller.arn
     }
   ]
-
-  depends_on = [module.eks, aws_iam_role.karpenter_controller]
+  depends_on = [
+    module.eks,
+    aws_iam_role.karpenter_controller
+  ]
 }
 
 resource "aws_iam_role" "karpenter_node" {
