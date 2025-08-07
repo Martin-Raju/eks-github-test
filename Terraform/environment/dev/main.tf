@@ -49,7 +49,8 @@ module "vpc" {
 
 # EKS Module
 module "eks" {
-  source                          = "../../modules/eks"
+  source                          = "terraform-aws-modules/eks/aws"
+  version                         = "21.0.0"
   cluster_name                    = module.label.id
   cluster_version                 = var.kubernetes_version
   subnet_ids                      = module.vpc.public_subnets
@@ -57,7 +58,21 @@ module "eks" {
   enable_irsa                     = true
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
+  # Enable Karpenter support
+  enable_karpenter            = true
+  karpenter_namespace         = "karpenter"
+  karpenter_irsa_name         = "karpenter-irsa"
+  karpenter_service_account   = "karpenter"
+  manage_karpenter_helm_chart = true
 
+  karpenter_helm_config = {
+    chart_version = "v0.36.1"
+    set_values = [
+      "settings.aws.defaultInstanceProfile=KarpenterNodeInstanceProfile-${var.cluster_name}"
+    ]
+  }
+  create_karpenter_node_iam_instance_profile = true
+  karpenter_node_iam_instance_profile_name   = "KarpenterNodeInstanceProfile-${var.cluster_name}"
   tags = {
     cluster = var.cluster_name
   }
@@ -95,10 +110,11 @@ module "eks" {
 
   eks_managed_node_group_defaults = {
     iam_role_additional_policies = {
-      eks_worker   = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-      cni          = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-      ecr_readonly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-      autoscaler   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
+      eks_worker                   = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+      cni                          = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+      ecr_readonly                 = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      autoscaler                   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
+      AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
     }
   }
 }
