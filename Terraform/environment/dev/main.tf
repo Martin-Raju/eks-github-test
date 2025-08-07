@@ -49,12 +49,7 @@ module "vpc" {
 
 # EKS Module
 module "eks" {
-<<<<<<< HEAD
   source                          = "../../modules/eks"
-=======
-  source                          = "terraform-aws-modules/eks/aws"
-  version                         = "21.0.7"
->>>>>>> 84dc37ad877b05937ac32173cb85ef80487e8c2a
   cluster_name                    = module.label.id
   cluster_version                 = var.kubernetes_version
   subnet_ids                      = module.vpc.public_subnets
