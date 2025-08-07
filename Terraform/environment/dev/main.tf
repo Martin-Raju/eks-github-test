@@ -131,9 +131,9 @@ resource "helm_release" "argo_cd" {
     value = "LoadBalancer"
   }
 
-  depends_on     = [module.eks]
-  force_update   = true
-  recreate_pods  = true
+  depends_on    = [module.eks]
+  force_update  = true
+  recreate_pods = true
 }
 
 resource "aws_iam_role" "karpenter_controller" {
