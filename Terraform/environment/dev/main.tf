@@ -134,6 +134,9 @@ resource "helm_release" "argo_cd" {
   depends_on    = [module.eks]
   force_update  = true
   recreate_pods = true
+  replace       = true
+  atomic        = true
+  skip_crds     = false
 }
 
 resource "aws_iam_role" "karpenter_controller" {
