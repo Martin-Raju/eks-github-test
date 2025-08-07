@@ -8,6 +8,9 @@ data "aws_caller_identity" "current" {}
 locals {
   iam_username = split("/", data.aws_caller_identity.current.arn)[1]
 }
+locals {
+  oidc_provider_id = element(split("/", module.eks.oidc_provider_arn), length(split("/", module.eks.oidc_provider_arn)) - 1)
+}
 
 # -------------------------------
 # Label Module
@@ -117,13 +120,14 @@ data "aws_eks_cluster_auth" "cluster" {
 }
 
 provider "kubernetes" {
+  alias                  = "helm"
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   token                  = data.aws_eks_cluster_auth.cluster.token
 }
 
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     token                  = data.aws_eks_cluster_auth.cluster.token
@@ -168,7 +172,7 @@ resource "aws_iam_role" "karpenter_controller" {
         Action = "sts:AssumeRoleWithWebIdentity",
         Condition = {
           StringEquals = {
-            "oidc.eks.${var.aws_region}.amazonaws.com/id/${module.eks.oidc_provider_id}:sub" = "system:serviceaccount:karpenter:karpenter"
+            "oidc.eks.${var.aws_region}.amazonaws.com/id/${local.oidc_provider_id}:sub" = "system:serviceaccount:karpenter:karpenter"
           }
         }
       }
