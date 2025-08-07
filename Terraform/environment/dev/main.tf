@@ -123,7 +123,7 @@ provider "kubernetes" {
 }
 
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     token                  = data.aws_eks_cluster_auth.cluster.token
@@ -169,7 +169,7 @@ resource "aws_iam_role" "karpenter_controller" {
         Action = "sts:AssumeRoleWithWebIdentity",
         Condition = {
           StringEquals = {
-            "${module.eks.oidc_provider_url}:sub" = "system:serviceaccount:karpenter:karpenter"
+            "${module.eks.oidc_provider_arn}:sub" = "system:serviceaccount:karpenter:karpenter"
           }
         }
       }
