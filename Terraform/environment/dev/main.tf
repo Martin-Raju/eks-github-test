@@ -164,12 +164,12 @@ resource "aws_iam_role" "karpenter_controller" {
       {
         Effect = "Allow",
         Principal = {
-          Service = "karpenter.sh"
+          Federated = module.eks.oidc_provider_arn
         },
         Action = "sts:AssumeRoleWithWebIdentity",
         Condition = {
           StringEquals = {
-            "oidc.eks.${var.aws_region}.amazonaws.com/id/${module.eks.oidc_provider_id}:sub" = "system:serviceaccount:karpenter:karpenter"
+            "${module.eks.oidc_provider_url}:sub" = "system:serviceaccount:karpenter:karpenter"
           }
         }
       }
@@ -207,7 +207,7 @@ resource "helm_release" "karpenter" {
       value = aws_iam_instance_profile.karpenter.name
     },
     {
-      name  = "serviceAccount.annotations.eks\.amazonaws\.com/role-arn"
+      name  = "serviceAccount.annotations.\"eks.amazonaws.com/role-arn\""
       value = aws_iam_role.karpenter_controller.arn
     }
   ]
