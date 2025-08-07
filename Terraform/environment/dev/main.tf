@@ -61,10 +61,6 @@ module "eks" {
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
 
-  tags = {
-    cluster = var.cluster_name
-  }
-
   access_entries = {
     user_access = {
       principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/${local.iam_username}"
