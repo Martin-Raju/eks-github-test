@@ -44,9 +44,9 @@ module "vpc" {
 
   tags = {
     "Environment" = var.environment
-	 Project      = "eks-platform"
-     Owner        = "devops@example.com"
-     ManagedBy    = "Terraform"
+    Project       = "eks-platform"
+    Owner         = "devops@example.com"
+    ManagedBy     = "Terraform"
   }
 }
 
@@ -101,7 +101,7 @@ module "eks" {
       autoscaler   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
     }
   }
-  
+
   tags = {
     Environment = var.environment
     Project     = "eks-platform"
@@ -136,7 +136,7 @@ provider "helm" {
 
 # Karpenter Module
 module "karpenter" {
-  source  = "terraform-aws-modules/eks/aws//modules/karpenter"
+  source       = "terraform-aws-modules/eks/aws//modules/karpenter"
   cluster_name = module.eks.cluster_name
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
@@ -151,7 +151,7 @@ resource "helm_release" "argo_cd" {
   chart            = "argo-cd"
   version          = "8.2.5"
   create_namespace = true
-  
+
   set = [
     {
       name  = "server.service.type"
