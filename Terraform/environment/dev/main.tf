@@ -1,5 +1,6 @@
 # Set up AWS Provider
 provider "aws" {
+  alias  = "override"
   region = var.aws_region
 }
 
