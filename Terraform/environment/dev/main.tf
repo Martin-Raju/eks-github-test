@@ -131,10 +131,10 @@ resource "helm_release" "argo_cd" {
     value = "LoadBalancer"
   }]
 
-  depends_on    = [module.eks]
-  force_update  = true
-  recreate_pods = true
-   disable_openapi_validation = true
+  depends_on                 = [module.eks]
+  force_update               = true
+  recreate_pods              = true
+  disable_openapi_validation = true
 }
 
 resource "aws_iam_role" "karpenter_controller" {
@@ -216,7 +216,7 @@ resource "helm_release" "karpenter" {
     {
       name  = "settings.aws.defaultInstanceProfile"
       value = aws_iam_instance_profile.karpenter.name
-      }
+    }
   ]
   set_sensitive = [
     {
