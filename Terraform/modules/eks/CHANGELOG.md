@@ -2,6 +2,80 @@
 
 All notable changes to this project will be documented in this file.
 
+## [21.0.7](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v21.0.6...v21.0.7) (2025-08-02)
+
+
+### Bug Fixes
+
+* Correct access policy logic to support not providing a policy to associate ([#3464](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3464)) ([39be61d](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/39be61d70232ba156fbf92ef90243b93fe5a9eee))
+
+## [21.0.6](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v21.0.5...v21.0.6) (2025-07-30)
+
+
+### Bug Fixes
+
+* Allow `instance_requirements` to be set in self-managed node groups ([#3455](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3455)) ([5322bf7](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/5322bf72fbbff4afb6a02ae283b21419d9de5b17))
+
+## [21.0.5](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v21.0.4...v21.0.5) (2025-07-29)
+
+
+### Bug Fixes
+
+* Correct addon logic lookup to pull latest addon version ([#3449](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3449)) ([55d7fa2](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/55d7fa23a356f518ae7b73ec2ddb0ab5947f9a42))
+
+## [21.0.4](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v21.0.3...v21.0.4) (2025-07-25)
+
+
+### Bug Fixes
+
+* Correct encryption configuration enable logic; avoid creating Auto Mode policy when Auto Mode is not enabled ([#3439](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3439)) ([6b8a3d9](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/6b8a3d94777346d79a64ccd8287c96b525348013))
+
+## [21.0.3](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v21.0.2...v21.0.3) (2025-07-24)
+
+
+### Bug Fixes
+
+* Correct variable defaults for `ami_id` and `kubernetes_version` ([#3437](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3437)) ([8807e0b](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/8807e0bb55fdc49ed894b5b51c14131526dbfb91))
+
+## [21.0.2](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v21.0.1...v21.0.2) (2025-07-24)
+
+
+### Bug Fixes
+
+* Move `encryption_config` default for `resources` out of type definition and to default variable value to allow disabling encryption ([#3436](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3436)) ([b37368f](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/b37368fdbc608a026f9c17952d964467f5e44e8a))
+
+## [21.0.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v21.0.0...v21.0.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* Correct logic to try to use module created IAM role before falli… ([#3433](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3433)) ([97d4ebb](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/97d4ebbe68a23aa431a534fd7ed56a76f9b37801))
+
+## [21.0.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v20.37.2...v21.0.0) (2025-07-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Upgrade min AWS provider and Terraform versions to `6.0` and `1.5.7` respectively (#3412)
+
+### Features
+
+* Upgrade min AWS provider and Terraform versions to `6.0` and `1.5.7` respectively ([#3412](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3412)) ([416515a](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/416515a0da1ca96c539977d6460e2bc02f10b4d4))
+
+## [20.37.2](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v20.37.1...v20.37.2) (2025-07-17)
+
+
+### Bug Fixes
+
+* Allow for both `amazonaws.com.cn` and `amazonaws.com` conditions in PassRole as required for AWS CN ([#3422](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3422)) ([83b68fd](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/83b68fda2b0ea818fc980ab847dd8255a2d18334))
+
+## [20.37.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v20.37.0...v20.37.1) (2025-06-18)
+
+
+### Bug Fixes
+
+* Restrict AWS provider max version due to v6 provider breaking changes ([#3384](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/3384)) ([681a868](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/681a868d624878474fd9f92d1b04d3fec0120db7))
+
 ## [20.37.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v20.36.1...v20.37.0) (2025-06-09)
 
 
