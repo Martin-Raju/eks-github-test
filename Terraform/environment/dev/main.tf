@@ -53,7 +53,7 @@ module "vpc" {
 
 # EKS Module
 module "eks" {
-  source                          = "terraform-aws-modules/eks/aws"
+  source                          = "terraform-aws-modules/eks"
   version                         = "20.0.7"
   cluster_name                    = module.label.id
   cluster_version                 = var.kubernetes_version
@@ -137,7 +137,7 @@ provider "helm" {
 
 # Karpenter Module
 module "karpenter" {
-  source  = "github.com/terraform-aws-modules/terraform-aws-eks//modules/karpenter?ref=v20.7.1"
+  source  = "terraform-aws-modules/eks/aws//modules/karpenter"
   cluster_name = module.eks.cluster_name
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
