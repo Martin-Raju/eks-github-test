@@ -229,10 +229,10 @@ resource "helm_release" "karpenter" {
   ]
 
   depends_on = [
-     module.eks,
-     aws_iam_role.karpenter_controller,
-     aws_iam_instance_profile.karpenter
-]
+    module.eks,
+    aws_iam_role.karpenter_controller,
+    aws_iam_instance_profile.karpenter
+  ]
 }
 
 resource "aws_iam_role" "karpenter_node" {
