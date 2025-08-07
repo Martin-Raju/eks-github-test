@@ -54,7 +54,6 @@ module "vpc" {
 module "eks" {
   source       = "terraform-aws-modules/eks/aws"
   version      = "21.0.7"
-  cluster_name = module.label.id
   subnet_ids   = module.vpc.private_subnets
   vpc_id       = module.vpc.vpc_id
   enable_irsa  = true
@@ -87,15 +86,6 @@ module "eks" {
       desired_size   = 2
       instance_types = ["t3.medium"]
       ami_type       = "AL2_x86_64"
-    }
-  }
-
-  eks_managed_node_group_defaults = {
-    iam_role_additional_policies = {
-      eks_worker   = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-      cni          = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-      ecr_readonly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-      autoscaler   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
     }
   }
 
