@@ -131,7 +131,7 @@ provider "helm" {
 }
 
 # -------------------------------
-# ArgoCD Helm Deployment (Fixed duplicate release name)
+# ArgoCD Helm Deployment (Fixed)
 # -------------------------------
 resource "helm_release" "argo_cd" {
   name             = "argo-cd"
@@ -141,14 +141,16 @@ resource "helm_release" "argo_cd" {
   version          = "8.2.5"
   create_namespace = true
 
-  set {
-    name  = "server.service.type"
-    value = "LoadBalancer"
-  }
+  set = [
+    {
+      name  = "server.service.type"
+      value = "LoadBalancer"
+    }
+  ]
 
-  depends_on    = [module.eks]
-  force_update  = true
-  recreate_pods = true
+  depends_on     = [module.eks]
+  force_update   = true
+  recreate_pods  = true
   lifecycle {
     ignore_changes = [name]
   }
@@ -182,7 +184,7 @@ resource "aws_iam_role" "karpenter_controller" {
 resource "aws_iam_policy" "karpenter_controller" {
   name        = "KarpenterControllerPolicy"
   description = "IAM policy for Karpenter controller"
-  policy      = file("${path.module}/karpenter-controller-policy.json")
+  policy      = jsonencode({}) # Replace this with actual JSON policy content or load from a file
 }
 
 resource "aws_iam_role_policy_attachment" "karpenter_controller" {
