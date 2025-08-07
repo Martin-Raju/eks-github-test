@@ -123,7 +123,7 @@ provider "kubernetes" {
 }
 
 provider "helm" {
-  kubernetes = {
+  kubernetes {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     token                  = data.aws_eks_cluster_auth.cluster.token
@@ -131,7 +131,7 @@ provider "helm" {
 }
 
 # -------------------------------
-# ArgoCD Helm Deployment
+# ArgoCD Helm Deployment (Fixed duplicate release name)
 # -------------------------------
 resource "helm_release" "argo_cd" {
   name             = "argo-cd"
@@ -141,12 +141,14 @@ resource "helm_release" "argo_cd" {
   version          = "8.2.5"
   create_namespace = true
 
-  set = [{
+  set {
     name  = "server.service.type"
     value = "LoadBalancer"
-  }]
+  }
 
   depends_on = [module.eks]
+  force_update = true
+  recreate_pods = true
   lifecycle {
     ignore_changes = [name]
   }
@@ -169,7 +171,7 @@ resource "aws_iam_role" "karpenter_controller" {
         Action = "sts:AssumeRoleWithWebIdentity",
         Condition = {
           StringEquals = {
-            "${module.eks.oidc_provider_arn}:sub" = "system:serviceaccount:karpenter:karpenter"
+            "${replace(module.eks.oidc_provider_arn, "https://", "")}:sub" = "system:serviceaccount:karpenter:karpenter"
           }
         }
       }
@@ -177,9 +179,15 @@ resource "aws_iam_role" "karpenter_controller" {
   })
 }
 
+resource "aws_iam_policy" "karpenter_controller" {
+  name        = "KarpenterControllerPolicy"
+  description = "IAM policy for Karpenter controller"
+  policy      = file("karpenter-controller-policy.json")
+}
+
 resource "aws_iam_role_policy_attachment" "karpenter_controller" {
   role       = aws_iam_role.karpenter_controller.name
-  policy_arn = "arn:aws:iam::aws:policy/KarpenterControllerPolicy"
+  policy_arn = aws_iam_policy.karpenter_controller.arn
 }
 
 # -------------------------------
@@ -212,7 +220,7 @@ resource "helm_release" "karpenter" {
     }
   ]
 
-  depends_on = [module.eks]
+  depends_on = [module.eks, aws_iam_role.karpenter_controller]
 }
 
 # -------------------------------
