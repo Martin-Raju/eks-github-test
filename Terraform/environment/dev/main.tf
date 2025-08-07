@@ -1,9 +1,7 @@
-# Set up AWS Provider
 provider "aws" {
   region = var.aws_region
 }
 
-# Data sources
 data "aws_availability_zones" "available" {}
 data "aws_caller_identity" "current" {}
 
@@ -11,14 +9,12 @@ locals {
   iam_username = split("/", data.aws_caller_identity.current.arn)[1]
 }
 
-# Label Module (Reusable naming)
 module "label" {
   source      = "../../modules/terraform-null-label"
   name        = var.cluster_name
   environment = var.environment
 }
 
-# VPC Module
 module "vpc" {
   source                  = "../../modules/vpc"
   name                    = "${module.label.environment}-vpc"
@@ -40,23 +36,27 @@ module "vpc" {
   private_subnet_tags = {
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
     "kubernetes.io/role/internal-elb"           = "1"
+    "karpenter.sh/discovery"                    = var.cluster_name
   }
 
   tags = {
     "Environment" = var.environment
-    Project       = "eks-platform"
-    Owner         = "devops@example.com"
-    ManagedBy     = "Terraform"
   }
 }
 
-# EKS Module
 module "eks" {
-  source      = "terraform-aws-modules/eks/aws"
-  version     = "21.0.7"
-  subnet_ids  = module.vpc.private_subnets
-  vpc_id      = module.vpc.vpc_id
-  enable_irsa = true
+  source                          = "../../modules/eks"
+  cluster_name                    = module.label.id
+  cluster_version                 = var.kubernetes_version
+  subnet_ids                      = module.vpc.public_subnets
+  vpc_id                          = module.vpc.vpc_id
+  enable_irsa                     = true
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_private_access = true
+
+  tags = {
+    cluster = var.cluster_name
+  }
 
   access_entries = {
     user_access = {
@@ -89,30 +89,27 @@ module "eks" {
     }
   }
 
-  tags = {
-    Environment = var.environment
-    Project     = "eks-platform"
-    Owner       = "devops@example.com"
-    ManagedBy   = "Terraform"
-    Cluster     = var.cluster_name
+  eks_managed_node_group_defaults = {
+    iam_role_additional_policies = {
+      eks_worker   = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+      cni          = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+      ecr_readonly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      autoscaler   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
+    }
   }
 }
 
-# auth provider until EKS exists
 data "aws_eks_cluster_auth" "cluster" {
   name       = module.eks.cluster_name
   depends_on = [module.eks]
 }
 
-# Kubernetes Provider 
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   token                  = data.aws_eks_cluster_auth.cluster.token
-
 }
 
-# Helm Provider 
 provider "helm" {
   kubernetes = {
     host                   = module.eks.cluster_endpoint
@@ -121,16 +118,6 @@ provider "helm" {
   }
 }
 
-# Karpenter Module
-module "karpenter" {
-  source       = "terraform-aws-modules/eks/aws//modules/karpenter"
-  cluster_name = module.eks.cluster_name
-  node_iam_role_additional_policies = {
-    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  }
-}
-
-# ArgoCD Helm Deployment
 resource "helm_release" "argo_cd" {
   name             = "argo-cd"
   namespace        = "argocd"
@@ -139,11 +126,124 @@ resource "helm_release" "argo_cd" {
   version          = "8.2.5"
   create_namespace = true
 
+  set = [{
+    name  = "server.service.type"
+    value = "LoadBalancer"
+  }]
+
+  depends_on                 = [module.eks]
+  force_update               = true
+  recreate_pods              = true
+  disable_openapi_validation = true
+}
+
+resource "aws_iam_role" "karpenter_controller" {
+  name = "karpenter-controller-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Federated = module.eks.oidc_provider_arn
+        },
+        Action = "sts:AssumeRoleWithWebIdentity",
+        Condition = {
+          StringEquals = {
+            "${replace(module.eks.oidc_provider_arn, "https://", "")}:sub" = "system:serviceaccount:karpenter:karpenter"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "karpenter_controller" {
+  name        = "KarpenterControllerPolicy"
+  description = "IAM policy for Karpenter controller"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ec2:CreateLaunchTemplate",
+          "ec2:CreateFleet",
+          "ec2:RunInstances",
+          "ec2:CreateTags",
+          "ec2:TerminateInstances",
+          "ec2:DescribeLaunchTemplates",
+          "ec2:DescribeInstances",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeAvailabilityZones",
+          "ssm:GetParameter",
+          "pricing:GetProducts",
+          "iam:PassRole",
+          "eks:DescribeCluster"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_controller" {
+  role       = aws_iam_role.karpenter_controller.name
+  policy_arn = aws_iam_policy.karpenter_controller.arn
+}
+
+resource "helm_release" "karpenter" {
+  name             = "karpenter"
+  namespace        = "karpenter"
+  create_namespace = true
+  repository       = "oci://public.ecr.aws/karpenter"
+  chart            = "karpenter"
+  version          = "0.36.1"
+
   set = [
+    { name = "settings.clusterName", value = module.eks.cluster_name },
+    { name = "settings.clusterEndpoint", value = module.eks.cluster_endpoint },
+    { name = "settings.aws.defaultInstanceProfile", value = aws_iam_instance_profile.karpenter.name },
+  ]
+  set_sensitive = [
     {
-      name  = "server.service.type"
-      value = "LoadBalancer"
+      name  = "serviceAccount.annotations.eks.amazonaws.com/role-arn"
+      value = aws_iam_role.karpenter_controller.arn
     }
   ]
-  depends_on = [module.eks]
+  depends_on = [
+    module.eks,
+    aws_iam_role.karpenter_controller
+  ]
+}
+
+resource "aws_iam_role" "karpenter_node" {
+  name = "KarpenterNodeRole-${module.eks.cluster_name}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_node_policy" {
+  role       = aws_iam_role.karpenter_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_instance_profile" "karpenter" {
+  name = "KarpenterNodeInstanceProfile-${module.eks.cluster_name}"
+  role = aws_iam_role.karpenter_node.name
 }
