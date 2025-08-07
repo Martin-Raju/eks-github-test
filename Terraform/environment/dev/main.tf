@@ -50,7 +50,7 @@ module "vpc" {
 # EKS Module
 module "eks" {
   source                          = "terraform-aws-modules/eks/aws"
-  version                         = "20.8.4"
+  version                         = "21.0.0"
   cluster_name                    = module.label.id
   cluster_version                 = var.kubernetes_version
   subnet_ids                      = module.vpc.public_subnets
