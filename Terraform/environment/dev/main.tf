@@ -146,8 +146,8 @@ resource "helm_release" "argo_cd" {
     value = "LoadBalancer"
   }
 
-  depends_on = [module.eks]
-  force_update = true
+  depends_on    = [module.eks]
+  force_update  = true
   recreate_pods = true
   lifecycle {
     ignore_changes = [name]
