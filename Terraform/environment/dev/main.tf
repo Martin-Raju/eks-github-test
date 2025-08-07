@@ -123,7 +123,7 @@ provider "kubernetes" {
 }
 
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     token                  = data.aws_eks_cluster_auth.cluster.token
@@ -146,8 +146,8 @@ resource "helm_release" "argo_cd" {
     value = "LoadBalancer"
   }
 
-  depends_on    = [module.eks]
-  force_update  = true
+  depends_on = [module.eks]
+  force_update = true
   recreate_pods = true
   lifecycle {
     ignore_changes = [name]
@@ -182,7 +182,7 @@ resource "aws_iam_role" "karpenter_controller" {
 resource "aws_iam_policy" "karpenter_controller" {
   name        = "KarpenterControllerPolicy"
   description = "IAM policy for Karpenter controller"
-  policy      = file("karpenter-controller-policy.json")
+  policy      = file("${path.module}/karpenter-controller-policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "karpenter_controller" {
