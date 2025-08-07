@@ -8,9 +8,6 @@ data "aws_caller_identity" "current" {}
 locals {
   iam_username = split("/", data.aws_caller_identity.current.arn)[1]
 }
-locals {
-  oidc_provider_id = element(split("/", module.eks.oidc_provider_arn), length(split("/", module.eks.oidc_provider_arn)) - 1)
-}
 
 # -------------------------------
 # Label Module
@@ -120,14 +117,13 @@ data "aws_eks_cluster_auth" "cluster" {
 }
 
 provider "kubernetes" {
-  alias                  = "helm"
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   token                  = data.aws_eks_cluster_auth.cluster.token
 }
 
 provider "helm" {
-  kubernetes = {
+  kubernetes {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     token                  = data.aws_eks_cluster_auth.cluster.token
@@ -145,14 +141,15 @@ resource "helm_release" "argo_cd" {
   version          = "8.2.5"
   create_namespace = true
 
-  set = [
-    {
-      name  = "server.service.type"
-      value = "LoadBalancer"
-    }
-  ]
+  set = [{
+    name  = "server.service.type"
+    value = "LoadBalancer"
+  }]
 
   depends_on = [module.eks]
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # -------------------------------
@@ -172,7 +169,7 @@ resource "aws_iam_role" "karpenter_controller" {
         Action = "sts:AssumeRoleWithWebIdentity",
         Condition = {
           StringEquals = {
-            "oidc.eks.${var.aws_region}.amazonaws.com/id/${local.oidc_provider_id}:sub" = "system:serviceaccount:karpenter:karpenter"
+            "oidc.eks.${var.aws_region}.amazonaws.com/id/${module.eks.oidc_provider_id}:sub" = "system:serviceaccount:karpenter:karpenter"
           }
         }
       }
@@ -210,7 +207,7 @@ resource "helm_release" "karpenter" {
       value = aws_iam_instance_profile.karpenter.name
     },
     {
-      name  = "serviceAccount.annotations.eks.amazonaws.com/role-arn"
+      name  = "serviceAccount.annotations.eks\.amazonaws\.com/role-arn"
       value = aws_iam_role.karpenter_controller.arn
     }
   ]
