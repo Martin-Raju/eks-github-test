@@ -58,13 +58,13 @@ module "eks" {
   enable_irsa                     = true
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
-    # Enable Karpenter support
-  enable_karpenter                = true
-  karpenter_namespace             = "karpenter"
-  karpenter_irsa_name             = "karpenter-irsa"
-  karpenter_service_account       = "karpenter"
-  manage_karpenter_helm_chart     = true
-  
+  # Enable Karpenter support
+  enable_karpenter            = true
+  karpenter_namespace         = "karpenter"
+  karpenter_irsa_name         = "karpenter-irsa"
+  karpenter_service_account   = "karpenter"
+  manage_karpenter_helm_chart = true
+
   karpenter_helm_config = {
     chart_version = "v0.36.1"
     set_values = [
@@ -110,10 +110,10 @@ module "eks" {
 
   eks_managed_node_group_defaults = {
     iam_role_additional_policies = {
-      eks_worker   = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-      cni          = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-      ecr_readonly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-      autoscaler   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
+      eks_worker                   = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+      cni                          = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+      ecr_readonly                 = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      autoscaler                   = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
       AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
     }
   }
