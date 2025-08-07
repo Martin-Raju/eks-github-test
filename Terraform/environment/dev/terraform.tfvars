@@ -1,4 +1,4 @@
-kubernetes_version        = "1.27"
+kubernetes_version        = "1.28"
 vpc_cidr                  = "10.0.0.0/16"
 aws_region                = "us-east-2"
 cluster_name              = "Poc-Cluster"
