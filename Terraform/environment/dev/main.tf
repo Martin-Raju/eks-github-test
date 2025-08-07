@@ -144,11 +144,6 @@ module "karpenter" {
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   }
-  tags = {
-    Environment = var.environment
-    Project     = "eks-platform"
-    ManagedBy   = "Terraform"
-  }
 }
 
 # ArgoCD Helm Deployment
