@@ -126,14 +126,14 @@ resource "helm_release" "argo_cd" {
   version          = "8.2.5"
   create_namespace = true
 
-  set {
+  set = [{
     name  = "server.service.type"
     value = "LoadBalancer"
-  }
+  }]
 
-  depends_on    = [module.eks]
-  force_update  = true
-  recreate_pods = true
+  depends_on     = [module.eks]
+  force_update   = true
+  recreate_pods  = true
 }
 
 resource "aws_iam_role" "karpenter_controller" {
@@ -161,7 +161,7 @@ resource "aws_iam_role" "karpenter_controller" {
 resource "aws_iam_policy" "karpenter_controller" {
   name        = "KarpenterControllerPolicy"
   description = "IAM policy for Karpenter controller"
-  policy      = file("karpenter-policy.json")
+  policy      = file("${path.module}/karpenter-policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "karpenter_controller" {
@@ -177,25 +177,24 @@ resource "helm_release" "karpenter" {
   chart            = "karpenter"
   version          = "0.36.1"
 
-  set {
-    name  = "settings.clusterName"
-    value = module.eks.cluster_name
-  }
-
-  set {
-    name  = "settings.clusterEndpoint"
-    value = module.eks.cluster_endpoint
-  }
-
-  set {
-    name  = "settings.aws.defaultInstanceProfile"
-    value = aws_iam_instance_profile.karpenter.name
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks.amazonaws.com/role-arn"
-    value = aws_iam_role.karpenter_controller.arn
-  }
+  set = [
+    {
+      name  = "settings.clusterName"
+      value = module.eks.cluster_name
+    },
+    {
+      name  = "settings.clusterEndpoint"
+      value = module.eks.cluster_endpoint
+    },
+    {
+      name  = "settings.aws.defaultInstanceProfile"
+      value = aws_iam_instance_profile.karpenter.name
+    },
+    {
+      name  = "serviceAccount.annotations.eks.amazonaws.com/role-arn"
+      value = aws_iam_role.karpenter_controller.arn
+    }
+  ]
 
   depends_on = [module.eks, aws_iam_role.karpenter_controller]
 }
