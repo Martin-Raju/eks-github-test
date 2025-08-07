@@ -125,7 +125,9 @@ resource "helm_release" "argo_cd" {
   chart            = "argo-cd"
   version          = "8.2.5"
   create_namespace = true
-
+  timeout          = 600
+  wait             = true
+  wait_for_jobs    = true
   set = [{
     name  = "server.service.type"
     value = "LoadBalancer"
@@ -202,7 +204,9 @@ resource "helm_release" "karpenter" {
   repository       = "oci://public.ecr.aws/karpenter"
   chart            = "karpenter"
   version          = "0.36.1"
-
+  timeout          = 600
+  wait             = true
+  wait_for_jobs    = true
   set = [
     {
       name  = "settings.clusterName"
@@ -224,7 +228,11 @@ resource "helm_release" "karpenter" {
     }
   ]
 
-  depends_on = [module.eks, aws_iam_role.karpenter_controller]
+  depends_on = [
+     module.eks,
+     aws_iam_role.karpenter_controller,
+     aws_iam_instance_profile.karpenter
+]
 }
 
 resource "aws_iam_role" "karpenter_node" {
