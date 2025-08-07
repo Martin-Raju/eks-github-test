@@ -1,9 +1,7 @@
-# Set up AWS Provider
 provider "aws" {
   region = var.aws_region
 }
 
-# Data sources
 data "aws_availability_zones" "available" {}
 data "aws_caller_identity" "current" {}
 
@@ -11,14 +9,18 @@ locals {
   iam_username = split("/", data.aws_caller_identity.current.arn)[1]
 }
 
-# Label Module (Reusable naming)
+# -------------------------------
+# Label Module
+# -------------------------------
 module "label" {
   source      = "../../modules/terraform-null-label"
   name        = var.cluster_name
   environment = var.environment
 }
 
+# -------------------------------
 # VPC Module
+# -------------------------------
 module "vpc" {
   source                  = "../../modules/vpc"
   name                    = "${module.label.environment}-vpc"
@@ -40,6 +42,7 @@ module "vpc" {
   private_subnet_tags = {
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
     "kubernetes.io/role/internal-elb"           = "1"
+    "karpenter.sh/discovery"                    = var.cluster_name
   }
 
   tags = {
@@ -47,7 +50,9 @@ module "vpc" {
   }
 }
 
-# EKS Module
+# -------------------------------
+# EKS Cluster Module
+# -------------------------------
 module "eks" {
   source                          = "../../modules/eks"
   cluster_name                    = module.label.id
@@ -103,30 +108,31 @@ module "eks" {
   }
 }
 
-# Delay auth provider until EKS exists
+# -------------------------------
+# Kubernetes Provider
+# -------------------------------
 data "aws_eks_cluster_auth" "cluster" {
   name       = module.eks.cluster_name
   depends_on = [module.eks]
 }
 
-# Kubernetes Provider 
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   token                  = data.aws_eks_cluster_auth.cluster.token
-
 }
 
-# Helm Provider 
 provider "helm" {
-  kubernetes = {
+  kubernetes {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     token                  = data.aws_eks_cluster_auth.cluster.token
   }
 }
 
-# Deploy ArgoCD via Helm
+# -------------------------------
+# ArgoCD Helm Deployment
+# -------------------------------
 resource "helm_release" "argo_cd" {
   name             = "argo-cd"
   namespace        = "argocd"
@@ -143,4 +149,97 @@ resource "helm_release" "argo_cd" {
   ]
 
   depends_on = [module.eks]
+}
+
+# -------------------------------
+# IAM for Karpenter Controller
+# -------------------------------
+resource "aws_iam_role" "karpenter_controller" {
+  name = "karpenter-controller-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "karpenter.sh"
+        },
+        Action = "sts:AssumeRoleWithWebIdentity",
+        Condition = {
+          StringEquals = {
+            "oidc.eks.${var.aws_region}.amazonaws.com/id/${module.eks.oidc_provider_id}:sub" = "system:serviceaccount:karpenter:karpenter"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_controller" {
+  role       = aws_iam_role.karpenter_controller.name
+  policy_arn = "arn:aws:iam::aws:policy/KarpenterControllerPolicy"
+}
+
+# -------------------------------
+# Karpenter Helm Deployment
+# -------------------------------
+resource "helm_release" "karpenter" {
+  name             = "karpenter"
+  namespace        = "karpenter"
+  create_namespace = true
+  repository       = "oci://public.ecr.aws/karpenter"
+  chart            = "karpenter"
+  version          = "0.36.1"
+
+  set = [
+    {
+      name  = "settings.clusterName"
+      value = module.eks.cluster_name
+    },
+    {
+      name  = "settings.clusterEndpoint"
+      value = module.eks.cluster_endpoint
+    },
+    {
+      name  = "settings.aws.defaultInstanceProfile"
+      value = aws_iam_instance_profile.karpenter.name
+    },
+    {
+      name  = "serviceAccount.annotations.eks\.amazonaws\.com/role-arn"
+      value = aws_iam_role.karpenter_controller.arn
+    }
+  ]
+
+  depends_on = [module.eks]
+}
+
+# -------------------------------
+# Karpenter Node Role/Profile
+# -------------------------------
+resource "aws_iam_role" "karpenter_node" {
+  name = "KarpenterNodeRole-${module.eks.cluster_name}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_node_policy" {
+  role       = aws_iam_role.karpenter_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_instance_profile" "karpenter" {
+  name = "KarpenterNodeInstanceProfile-${module.eks.cluster_name}"
+  role = aws_iam_role.karpenter_node.name
 }
