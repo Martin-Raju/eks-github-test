@@ -9,18 +9,12 @@ locals {
   iam_username = split("/", data.aws_caller_identity.current.arn)[1]
 }
 
-# -------------------------------
-# Label Module
-# -------------------------------
 module "label" {
   source      = "../../modules/terraform-null-label"
   name        = var.cluster_name
   environment = var.environment
 }
 
-# -------------------------------
-# VPC Module
-# -------------------------------
 module "vpc" {
   source                  = "../../modules/vpc"
   name                    = "${module.label.environment}-vpc"
@@ -50,9 +44,6 @@ module "vpc" {
   }
 }
 
-# -------------------------------
-# EKS Cluster Module
-# -------------------------------
 module "eks" {
   source                          = "../../modules/eks"
   cluster_name                    = module.label.id
@@ -108,9 +99,6 @@ module "eks" {
   }
 }
 
-# -------------------------------
-# Kubernetes Provider
-# -------------------------------
 data "aws_eks_cluster_auth" "cluster" {
   name       = module.eks.cluster_name
   depends_on = [module.eks]
@@ -130,9 +118,6 @@ provider "helm" {
   }
 }
 
-# -------------------------------
-# ArgoCD Helm Deployment (Fixed)
-# -------------------------------
 resource "helm_release" "argo_cd" {
   name             = "argo-cd"
   namespace        = "argocd"
@@ -141,24 +126,16 @@ resource "helm_release" "argo_cd" {
   version          = "8.2.5"
   create_namespace = true
 
-  set = [
-    {
-      name  = "server.service.type"
-      value = "LoadBalancer"
-    }
-  ]
-
-  depends_on    = [module.eks]
-  force_update  = true
-  recreate_pods = true
-  lifecycle {
-    ignore_changes = [name]
+  set {
+    name  = "server.service.type"
+    value = "LoadBalancer"
   }
+
+  depends_on     = [module.eks]
+  force_update   = true
+  recreate_pods  = true
 }
 
-# -------------------------------
-# IAM for Karpenter Controller
-# -------------------------------
 resource "aws_iam_role" "karpenter_controller" {
   name = "karpenter-controller-role"
 
@@ -184,7 +161,7 @@ resource "aws_iam_role" "karpenter_controller" {
 resource "aws_iam_policy" "karpenter_controller" {
   name        = "KarpenterControllerPolicy"
   description = "IAM policy for Karpenter controller"
-  policy      = jsonencode({}) # Replace this with actual JSON policy content or load from a file
+  policy      = file("karpenter-policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "karpenter_controller" {
@@ -192,9 +169,6 @@ resource "aws_iam_role_policy_attachment" "karpenter_controller" {
   policy_arn = aws_iam_policy.karpenter_controller.arn
 }
 
-# -------------------------------
-# Karpenter Helm Deployment
-# -------------------------------
 resource "helm_release" "karpenter" {
   name             = "karpenter"
   namespace        = "karpenter"
@@ -203,31 +177,29 @@ resource "helm_release" "karpenter" {
   chart            = "karpenter"
   version          = "0.36.1"
 
-  set = [
-    {
-      name  = "settings.clusterName"
-      value = module.eks.cluster_name
-    },
-    {
-      name  = "settings.clusterEndpoint"
-      value = module.eks.cluster_endpoint
-    },
-    {
-      name  = "settings.aws.defaultInstanceProfile"
-      value = aws_iam_instance_profile.karpenter.name
-    },
-    {
-      name  = "serviceAccount.annotations.\"eks.amazonaws.com/role-arn\""
-      value = aws_iam_role.karpenter_controller.arn
-    }
-  ]
+  set {
+    name  = "settings.clusterName"
+    value = module.eks.cluster_name
+  }
+
+  set {
+    name  = "settings.clusterEndpoint"
+    value = module.eks.cluster_endpoint
+  }
+
+  set {
+    name  = "settings.aws.defaultInstanceProfile"
+    value = aws_iam_instance_profile.karpenter.name
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\.amazonaws\.com/role-arn"
+    value = aws_iam_role.karpenter_controller.arn
+  }
 
   depends_on = [module.eks, aws_iam_role.karpenter_controller]
 }
 
-# -------------------------------
-# Karpenter Node Role/Profile
-# -------------------------------
 resource "aws_iam_role" "karpenter_node" {
   name = "KarpenterNodeRole-${module.eks.cluster_name}"
 
