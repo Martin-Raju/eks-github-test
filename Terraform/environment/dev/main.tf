@@ -52,12 +52,12 @@ module "vpc" {
 
 # EKS Module
 module "eks" {
-  source                          = "terraform-aws-modules/eks/aws"
-  version                         = "21.0.7"
-  cluster_name                    = module.label.id
-  subnet_ids                      = module.vpc.private_subnets
-  vpc_id                          = module.vpc.vpc_id
-  enable_irsa                     = true
+  source       = "terraform-aws-modules/eks/aws"
+  version      = "21.0.7"
+  cluster_name = module.label.id
+  subnet_ids   = module.vpc.private_subnets
+  vpc_id       = module.vpc.vpc_id
+  enable_irsa  = true
 
   access_entries = {
     user_access = {
