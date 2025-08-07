@@ -131,9 +131,9 @@ resource "helm_release" "argo_cd" {
     value = "LoadBalancer"
   }]
 
-  depends_on     = [module.eks]
-  force_update   = true
-  recreate_pods  = true
+  depends_on    = [module.eks]
+  force_update  = true
+  recreate_pods = true
 }
 
 resource "aws_iam_role" "karpenter_controller" {
@@ -161,7 +161,7 @@ resource "aws_iam_role" "karpenter_controller" {
 resource "aws_iam_policy" "karpenter_controller" {
   name        = "KarpenterControllerPolicy"
   description = "IAM policy for Karpenter controller"
-  policy      = jsonencode({
+  policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
