@@ -125,6 +125,7 @@ resource "helm_release" "argo_cd" {
   chart            = "argo-cd"
   version          = "8.2.5"
   create_namespace = true
+  timeout          = 600
 
   set = [{
     name  = "server.service.type"
