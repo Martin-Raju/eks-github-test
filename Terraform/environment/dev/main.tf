@@ -239,28 +239,6 @@ resource "aws_iam_role" "karpenter_node" {
   })
 }
 
-resource "aws_iam_role" "karpenter_controller01" {
-  name = "karpenter-controller-role01"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = {
-          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/oidc.eks.${var.aws_region}.amazonaws.com/id/CF146C0FED9FEA78777B911861529D08"
-        },
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Condition = {
-          StringEquals = {
-            "oidc.eks.${var.aws_region}.amazonaws.com/id/CF146C0FED9FEA78777B911861529D08:sub" = "system:serviceaccount:karpenter:karpenter"
-          }
-        }
-      }
-    ]
-  })
-}
-
 resource "aws_iam_role_policy_attachment" "karpenter_node_policy" {
   role       = aws_iam_role.karpenter_node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
