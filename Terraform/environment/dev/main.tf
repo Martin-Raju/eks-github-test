@@ -261,3 +261,69 @@ resource "helm_release" "karpenter" {
     aws_iam_role.karpenter_controller
   ]
 }
+
+#AWSNodeTemplate (Karpenter) - created as kubernetes_manifest
+
+resource "kubernetes_manifest" "karpenter_awsnodetemplate" {
+  manifest = {
+    apiVersion = "karpenter.k8s.aws/v1beta1"
+    kind       = "AWSNodeTemplate"
+    metadata = {
+      name = "default"
+      namespace = "karpenter"
+    }
+    spec = {
+      subnetSelector = {
+        # use subnets tagged by your VPC module; adjust tag/value if your module uses 'owned' vs 'shared'
+        "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      }
+      securityGroupSelector = {
+        "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      }
+      instanceProfile = aws_iam_instance_profile.karpenter.name
+    }
+  }
+
+  depends_on = [helm_release.karpenter, aws_iam_instance_profile.karpenter]
+}
+
+# Provisioner (Karpenter) - created as kubernetes_manifest
+
+resource "kubernetes_manifest" "karpenter_provisioner" {
+  manifest = {
+    apiVersion = "karpenter.sh/v1beta1"
+    kind       = "Provisioner"
+    metadata = {
+      name = "default"
+    }
+    spec = {
+      requirements = [
+        {
+          key      = "karpenter.sh/capacity-type"
+          operator = "In"
+          values   = ["spot","on-demand"]
+        },
+        {
+          key      = "node.kubernetes.io/instance-type"
+          operator = "In"
+          values   = ["t3.medium","t3.large"]
+        }
+      ]
+      limits = {
+        resources = {
+          cpu = "1000"
+        }
+      }
+      providerRef = {
+        name = kubernetes_manifest.karpenter_awsnodetemplate.manifest.metadata.name
+      }
+      ttlSecondsAfterEmpty = 30
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.karpenter_awsnodetemplate,
+    helm_release.karpenter
+  ]
+}
+
