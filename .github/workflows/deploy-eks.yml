@@ -46,3 +46,17 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
         #run: terraform destroy -auto-approve
+        
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Update kubeconfig for EKS cluster
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name $(terraform output -raw cluster_name)
+
+      - name: Apply Karpenter Provisioner manifest
+        run: |
+          kubectl apply -f K8s/provisioner.yml
