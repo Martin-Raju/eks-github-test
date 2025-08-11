@@ -269,7 +269,7 @@ resource "kubernetes_manifest" "karpenter_awsnodetemplate" {
     apiVersion = "karpenter.k8s.aws/v1beta1"
     kind       = "AWSNodeTemplate"
     metadata = {
-      name = "default"
+      name      = "default"
       namespace = "karpenter"
     }
     spec = {
@@ -301,12 +301,12 @@ resource "kubernetes_manifest" "karpenter_provisioner" {
         {
           key      = "karpenter.sh/capacity-type"
           operator = "In"
-          values   = ["spot","on-demand"]
+          values   = ["spot", "on-demand"]
         },
         {
           key      = "node.kubernetes.io/instance-type"
           operator = "In"
-          values   = ["t3.medium","t3.large"]
+          values   = ["t3.medium", "t3.large"]
         }
       ]
       limits = {
