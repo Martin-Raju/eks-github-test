@@ -239,8 +239,8 @@ resource "aws_iam_role" "karpenter_node" {
   })
 }
 
-resource "aws_iam_role" "karpenter_controller" {
-  name = "karpenter-controller-role"
+resource "aws_iam_role" "karpenter_controller01" {
+  name = "karpenter-controller-role01"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
